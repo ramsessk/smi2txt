@@ -1,6 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 '''
+
+2012.12.02
+Process Sequence
+1. convert all smi at current directory to srt
+2. convert all srt at current directory to txt
+3. Concatenate all txt files at current directory
+4. Delete temp files 
+
+Converted srt file is UTF-8
+Converted txt file is UTF-8
+
+
 Started : 2012/11/20
 license: GPL
 

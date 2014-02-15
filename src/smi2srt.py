@@ -13,10 +13,10 @@ license: GPL
 
 
 SMI have this format!
-===================================================================================================
+===============================================================================
 
 SRT have this format!
-===================================================================================================
+===============================================================================
 1
 00:00:12,000 --> 00:00:15,123
 This is the first subtitle
@@ -37,13 +37,13 @@ __version__ = "1.0.0"
 __version_info__ = (1, 0, 0)
 __license__ = "GCQVista's NDA"
 
-###################################################################################################
+###############################################################################
 import os
 import sys
 import re
 #import chardet #@UnresolvedImport
 
-###################################################################################################
+###############################################################################
 def usage(msg=None, exit_code=1):
 	print_msg = """
 usage %s Encoding smifile.smi [...]
@@ -55,11 +55,12 @@ usage %s Encoding smifile.smi [...]
 	print print_msg
 	sys.exit(exit_code)
 
-###################################################################################################
+###############################################################################
 def usage2(msg=None, exit_code=1):
 	print_msg = """
 usage %s Encoding
-	convert smi files in current directory into srt subtitle files with same filename.
+	convert smi files in current directory into srt subtitle files with same 
+	filename.
 	By steven
 	Encoding : such as CP949, EUC_KR, UTF-8,...
 """ % os.path.basename(sys.argv[0])
@@ -68,7 +69,7 @@ usage %s Encoding
 	print print_msg
 	sys.exit(exit_code)
 
-###################################################################################################
+###############################################################################
 class smiItem(object):
 	def __init__(self):
 		self.start_ms = 0L
@@ -98,7 +99,8 @@ class smiItem(object):
 		# 3) remove web string like "&nbsp";
 		self.contents = re.sub(r'&[a-z]{2,5};', '', self.contents)
 		# 4) replace "<br>" with '\n';
-		self.contents = re.sub(r'(<br>)+', '\n', self.contents, flags=re.IGNORECASE)
+		self.contents = re.sub(r'(<br>)+', '\n', self.contents, \
+							flags=re.IGNORECASE)
 		# 5) find all tags
 		fndx = self.contents.find('<')
 		if fndx >= 0:
@@ -106,7 +108,8 @@ class smiItem(object):
 			sb = self.contents[0:fndx]
 			contents = contents[fndx:]
 			while True:
-				m = re.match(r'</?([a-z]+)[^>]*>([^<>]*)', contents, flags=re.IGNORECASE)
+				m = re.match(r'</?([a-z]+)[^>]*>([^<>]*)', contents, \
+							flags=re.IGNORECASE)
 				if m == None: break
 				contents = contents[m.end(2):]
 				#if m.group(1).lower() in ['font', 'b', 'i', 'u']:
@@ -117,10 +120,11 @@ class smiItem(object):
 		self.contents = self.contents.strip()
 		self.contents = self.contents.strip('\n')
 	def __repr__(self):
-		s = '%d:%d:<%s>:%d' % (self.start_ms, self.end_ms, self.contents, self.linecount)
+		s = '%d:%d:<%s>:%d' % (self.start_ms, self.end_ms, self.contents, \
+							self.linecount)
 		return s
 
-###################################################################################################
+###############################################################################
 def convertSMI(smi_file, encoding):
 	if not os.path.exists(smi_file):
 		sys.stderr.write('Cannot find smi file <%s>\n' % smi_file)
@@ -158,9 +162,11 @@ def convertSMI(smi_file, encoding):
 		print linecnt, line
 		sndx = line.upper().find('<SYNC')
 		if sndx >= 0:
-			m = re.search(r'<sync\s+start\s*=\s*(\d+)>(.*)$', line, flags=re.IGNORECASE)
+			m = re.search(r'<sync\s+start\s*=\s*(\d+)>(.*)$', line, \
+						flags=re.IGNORECASE)
 			if not m:
-				raise Exception('Invalid format tag of <Sync start=nnnn> with "%s"' % line)
+				raise Exception('Invalid format tag of <Sync start=nnnn> \
+				with "%s"' % line)
 			sync_cont += line[0:sndx]
 			last_si = si
 			if last_si != None:
@@ -182,7 +188,8 @@ def convertSMI(smi_file, encoding):
 		if si.contents == None or len(si.contents) <= 0:
 			continue
 		#print si
-		sistr = '%d\n%s --> %s\n%s\n\n' % (ndx, si.start_ts, si.end_ts, si.contents)
+		sistr = '%d\n%s --> %s\n%s\n\n' % (ndx, si.start_ts, si.end_ts, \
+										si.contents)
 		#sistr = unicode(sistr, 'utf-8').encode('euc-kr')
 		ofp.write(sistr)
 		print sistr,
@@ -190,7 +197,7 @@ def convertSMI(smi_file, encoding):
 	ofp.close()
 	return True
 
-###################################################################################################
+###############################################################################
 def doConvert():
 	if len(sys.argv) <= 2:
 		usage()
@@ -201,7 +208,7 @@ def doConvert():
 			print "Converting <%s> Failture!" % smi_file
 			
 	
-###################################################################################################
+##############################################################################
 def doBatchSmi2SrtConvert():
 	if len(sys.argv) <= 1:
 		usage2()
@@ -221,16 +228,6 @@ def doBatchSmi2SrtConvert():
 			print "Conversion fail :, s"
 
 
-###################################################################################################
-
-
-
-
-
-
-
-
-
-###################################################################################################
+##############################################################################
 if __name__ == '__main__':
 	doBatchSmi2SrtConvert()

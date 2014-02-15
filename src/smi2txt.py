@@ -40,8 +40,8 @@ Another subtitle demonstrating position.
 '''
 __author__ = "steven <mcchae@gmail.com>"
 __date__ = "2014/02/15"
-__version__ = "1.1.0"
-__version_info__ = (1, 1, 0)
+__version__ = "1.1.1"
+__version_info__ = (1, 1, 1)
 __license__ = "GCQVista's NDA"
 
 import os

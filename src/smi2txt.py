@@ -16,7 +16,7 @@ Converted txt file is UTF-8
 Started : 2012/11/20
 license: GPL
 
-@version: 1.0.0
+@version: 1.1.0
 @author: steven <ramsessk@gmail.com>
 
 SMI have this format!
@@ -39,56 +39,55 @@ Another subtitle demonstrating tags:
 Another subtitle demonstrating position.
 '''
 __author__ = "steven <mcchae@gmail.com>"
-__date__ = "2012/11/24"
-__version__ = "1.0.0"
-__version_info__ = (1, 0, 0)
+__date__ = "2014/02/15"
+__version__ = "1.1.0"
+__version_info__ = (1, 1, 0)
 __license__ = "GCQVista's NDA"
 
-###############################################################################
 import os
 import sys
 import re
-from operator import itemgetter, attrgetter
-
-###############################################################################
-def usage(msg=None, exit_code=1):
-	print_msg = """
-usage %s Encoding smifile.smi [...]
-	convert smi into srt subtitle file with same filename.
-	By MoonChang Chae <mcchae@gmail.com>
-""" % os.path.basename(sys.argv[0])
-	if msg:
-		print_msg += '%s\n' % msg
-	print print_msg
-	sys.exit(exit_code)
-
-###############################################################################
+from operator import itemgetter, attrgetter #@UnusedImport
+import logging
+try:
+	import chardet
+except:
+	print '''chardet python package not found. Please install it using
+macports or pip'''
+	sys.exit()
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 def usage_smi2txt(msg=None, exit_code=1):
 	print_msg = """
-usage %s Encoding TxtFileName
-	convert smi files in current directory into ONE text file 
-	which have 'TxtFileName'.
-	You may have srt files as well.
-	Origin of smi2srt.py : by MoonChang Chae <mcchae@gmail.com>
-	By steven (ramsessk@gmail.com)
+usage: $python {0} [TxtFileName] [srt_only]
+	version: {1}
+	convert MULTIPLE smi files in current directory into ONE text file 
+	which will have a 'TxtFileName' filename.
+	This would detect encodings(EUC-KR, UTF-8) automactically and convert to
+	UTF-8.
+	If srt only need (convert smi to srt only), provide srt_only option.	
 	
-	Encoding : such as CP949, EUC_KR, UTF-8,...
-	example : $python smi2txt.py cp949 spider_man
-""" % os.path.basename(sys.argv[0])
+	Origin of smi2srt.py : by MoonChang Chae <mcchae@gmail.com>
+	Modified by steven (ramsessk@gmail.com)
+	Project location: https://github.com/ramsessk/smi2txt.git
+	
+	example : $python smi2txt.py spider_man
+	          $python smi2txt.py srt_only
+""".format(os.path.basename(sys.argv[0]), __version__)
 	if msg:
 		print_msg += '%s\n' % msg
 	print print_msg
 	sys.exit(exit_code)
 
-
-###############################################################################
+#------------------------------------------------------------------------------
 #
 #			SMI to SRT
 #
-###############################################################################
-
-###############################################################################
+#------------------------------------------------------------------------------
 class smiItem(object):
+	''' smiItem class
+	convert smi to srt format.
+	'''
 	def __init__(self):
 		self.start_ms = 0L
 		self.start_ts = '00:00:00,000'
@@ -142,10 +141,12 @@ class smiItem(object):
 							self.linecount)
 		return s
 
-###############################################################################
+#------------------------------------------------------------------------------
 def convertSMI(smi_file, encoding):
+	''' convert smi file to srt format with encoding provided.
+	'''
 	if not os.path.exists(smi_file):
-		sys.stderr.write('Cannot find smi file <%s>\n' % smi_file)
+		logging.error('Cannot find smi file {0}\n'.format(smi_file))
 		return False
 	rndx = smi_file.rfind('.')
 	srt_file = '%s.srt' % smi_file[0:rndx]
@@ -153,16 +154,28 @@ def convertSMI(smi_file, encoding):
 	ifp = open(smi_file)
 	smi_sgml = ifp.read()#.upper()
 	ifp.close()
-	chdt = encoding # chardet.detect(smi_sgml)
-	#if chdt['encoding'] != 'UTF-8':
-	if chdt != 'utf-8':
-		try:
-			smi_sgml = unicode(smi_sgml, chdt) # chdt['encoding'].lower()).encode('iso-8859-1') #'utf-8')
-		except:
-			print "Error : unicode(smi_sgml, chdt) ", smi_file
-			return False
+	if encoding == "":
+		chdt = chardet.detect(smi_sgml)
+		logging.info("{0} encoding is {1}".format(smi_file, chdt['encoding']))
+		if chdt['encoding'] != 'UTF-8':
+			try:
+				smi_sgml = unicode(smi_sgml, chdt['encoding'].lower())
+			except:
+				logging.error("Error : unicode(smi_sgml, chdt) in {0}".\
+							format(smi_file))
+				return False
+	else:
+		chdt = encoding
+		logging.info("{0} encoding is {1}".format(smi_file, encoding))
+		if chdt != 'UTF-8':
+			try:
+				smi_sgml = unicode(smi_sgml, chdt)
+			except:
+				logging.error("Error : unicode(smi_sgml, chdt) in {0}".\
+							format(smi_file))
+				return False
+		
 			
-	#print smi_sgml
 	# skip to first starting tag (skip first 0xff 0xfe ...)
 	try:
 		fndx = smi_sgml.find('<SYNC')
@@ -181,15 +194,15 @@ def convertSMI(smi_file, encoding):
 	linecnt = 0
 	for line in lines:
 		linecnt += 1
+		logging.debug(linecnt, line)
 		line = line.encode('UTF-8')
-		#print linecnt, line
 		sndx = line.upper().find('<SYNC')
 		if sndx >= 0:
 			m = re.search(r'<sync\s+start\s*=\s*(\d+)>(.*)$', line, \
 						flags=re.IGNORECASE)
 			if not m:
-				#raise Exception('Invalid format tag of <Sync start=nnnn> with "%s"' % line)
-				print 'Invalid format tag of <Sync start=nnnn> with "%s"' % line
+				logging.error('Invalid format tag of <Sync start=nnnn> with \
+				{0}'.format(line))
 				return False
 			sync_cont += line[0:sndx]
 			last_si = si
@@ -198,7 +211,6 @@ def convertSMI(smi_file, encoding):
 				last_si.contents = sync_cont
 				srt_list.append(last_si)
 				last_si.linecount = linecnt
-				#print '[%06d] %s' % (linecnt, last_si)
 			sync_cont = m.group(2)
 			si = smiItem()
 			si.start_ms = long(m.group(1))
@@ -211,67 +223,73 @@ def convertSMI(smi_file, encoding):
 		si.convertSrt()
 		if si.contents == None or len(si.contents) <= 0:
 			continue
-		#print si
+		logging.debug(si)
 		sistr = '%d\n%s --> %s\n%s\n\n' % (ndx, si.start_ts, si.end_ts, \
 										si.contents)
-		#sistr = unicode(sistr, 'utf-8').encode('euc-kr')
 		ofp.write(sistr)
-		#print sistr,
+		logging.debug(sistr)
 		ndx += 1
 	ofp.close()
 	return True
 
-###############################################################################
-def doBatchSmi2SrtConvert(enc):
+#------------------------------------------------------------------------------
+def doBatchSmi2SrtConvert(enc=""):
+	'''
+	batch job for coverting smi files to srt in the current directory.
+	'''
 	files = []
 	dirs = os.listdir('./')
 	for s in dirs:
-		#print "s=", s, s[-4:]
 		if s[-4:] == '.smi':
-			#print "found:", s
+			logging.info("Found:{0}".format(s))
 			files.append(s)
 
 	for s in files:
 		if convertSMI(s, enc):
-			print "Conversion done :", s
+			logging.info("Conversion done : {0}".format(s))
 		else:
-			print "Conversion fail :", s
+			logging.info("Conversion fail : {0}".format(s))
 
 
-###############################################################################
+#------------------------------------------------------------------------------
 #
 #			SRT to TXT
 #
-###############################################################################
-
-###############################################################################
-def FindSrtFiles():
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+def FindSrtFiles(extension=''):
+	''' find srt files in the current directory
+	'''
 	filenames = []
 	dirs = os.listdir('./')
 	for s in dirs:
-		if s[-4:] == '.srt':
+		if s[-4:] == extension:
 			filenames.append(s)
+			logging.info("Found {0}".format(s))
 	return filenames
 	
-###############################################################################
+#------------------------------------------------------------------------------
 def ReadSrtFile (fname):
-	print 'Reading file ...'
-	f = open(fname, 'r')
-	count = 0
-	lines = f.readlines()
-	count = len(lines)
-	f.close()
-	print count, " lines"
+	''' read srt files
+	'''
+	logging.info('Reading file {0}'.format(fname))
+	with open(fname, 'r') as f:
+		lines = f.readlines()
+		count = len(lines)
+	logging.info("{0} lines read".format(count))
+	
 	return lines
-###############################################################################
+#------------------------------------------------------------------------------
 #--------------------------------------------
 #
 #	subtitles = [ ['1', '00:00 --> 00:00', 'abcdef'], \
 #				  ['2', '00:01 --> 00:01', 'erqwer'], ....
 #
-###############################################################################
+#------------------------------------------------------------------------------
 def AnalysisSrt (lines, enc) :
-	print 'Analysis file ...'
+	''' Analysis subtiles for sorting
+	'''
+	logging.info('Analysis file ...')
 	subtitle = []
 	subtitles = []
 	n = 0
@@ -297,136 +315,116 @@ def AnalysisSrt (lines, enc) :
 		n = n+1
 	#	if num_of_subtitles > 20:
 	#		break
-	print len(subtitles), 'subtiles'
+	logging.info("{0} subtitles".format(len(subtitles)))
+	
 	return subtitles
 
-
-###############################################################################
-#--------------------------------------------
-def SortSubtitles( subtitles ):
-	subtitles = sorted(subtitles, key=itemgetter(1))
-	
-#	for t in subtitles:
-#		for s in t:
-#			print s, 
-	return subtitles
-
-
-###############################################################################
-def PrintSubtitles(subtitles):
-	
-	n = 1
-	for title in subtitles:
-		items = 0
-		for s in title:
-			if items == 0:
-				#print n
-				n = n
-			elif items == 1:
-				n = n
-			else:
-				print s,
-			items = items + 1
-		n = n + 1
-
-###############################################################################
+#------------------------------------------------------------------------------
 def WriteTxtSubtitles(subtitles, fname):
-
-	sorted_subtitles = SortSubtitles(subtitles)
+	''' Write subtiles to text file
+	'''
+	sorted_subtitles = sorted(subtitles, key=itemgetter(1))
 	fname = fname + '.txt'
-	f = open(fname, 'w')
-	n = 1
-	for title in sorted_subtitles:
-		items = 0
-		for s in title:
-			if items == 0:
-				#print n
-				n = n
-			elif items == 1:
-				n = n
-			else:
-				#print s,
-				f.write(s.encode('utf-8'))
-			items = items + 1
-		n = n + 1
 	
-	print "Written txt to ", fname
+	with open(fname, 'w') as f:
+		n = 1
+		for title in sorted_subtitles:
+			items = 0
+			for s in title:
+				if items == 0:
+					#print n
+					n = n
+				elif items == 1:
+					n = n
+				else:
+					#print s,
+					f.write(s.encode('utf-8'))
+				items = items + 1
+			n = n + 1
+	
+	logging.info("Written txt to {0}".format(fname))
 
 
 
-###############################################################################
+#------------------------------------------------------------------------------
 def doSrt2Txt(encode):
-
+	'''write only subtiles to the text file. All time information to be
+	eliminated.
+	encode: text file encode
+	'''
 	enc = encode
-	fnames = FindSrtFiles()
-	for s in fnames:
-		print s
+	fnames = FindSrtFiles(extension='.srt')
 	
 	for src in fnames:
-		print "--------------------------------"
-		print "start :", src
+		logging.info("Start :{0}".format(src))
 		
-		#dest = src
 		lines = ReadSrtFile(src)
 		subtitles = AnalysisSrt(lines, enc)
-		sorted_subtitles = SortSubtitles(subtitles)	
-		#PrintSubtitles(sorted_subtitles)
+		sorted_subtitles = sorted(subtitles, key=itemgetter(1))
 		WriteTxtSubtitles(sorted_subtitles, src)
 
 
-###############################################################################
+#------------------------------------------------------------------------------
 #
 #			concatenate txt files
 #
-###############################################################################
+#------------------------------------------------------------------------------
 def ConcatenateTxtFiles(fname):
+	''' Concaternate txt files to fname.
+	fname : extension should be .txt
+	'''
 	files = []
-
 	dirs = os.listdir('./')
 	n = 1
-	wf = open(fname, 'w+')
-	for s in dirs:
-		#print "s=", s, s[-4:]
-		if s[-4:] == '.txt':
-			#print s
-			ss = str(n) + '. ' + s
-			wf.write(ss)
+	with open(fname, 'w+') as wf:
+		for s in dirs:
+			if s[-4:].lower() == '.txt' and s != fname:
+				logging.info("Fond txt file: {0}".format(s))
+				ss = str(n) + '. ' + s
+				wf.write(ss)
+				wf.write('\n')
+				files.append(s)
+				n = n+1
+		wf.write('\n\n\n\n')
+		
+		for s in files:
+			wf.write("==========================================\n")
+			wf.write(s)
 			wf.write('\n')
-			files.append(s)
-			n = n+1
-	wf.write('\n\n\n\n')
-	
-	for s in files:
-		wf.write("==========================================\n")
-		wf.write(s)
-		wf.write('\n')
-		wf.write("==========================================\n")
-		rf = open(s, "r")
-		lines = rf.readlines()
-		rf.close()
-		for l in lines:
-			#print l
-			wf.write(l)
-	
-	wf.close()
-
+			wf.write("==========================================\n")
+			rf = open(s, "r")
+			lines = rf.readlines()
+			rf.close()
+			for l in lines:
+				wf.write(l)
 
 def DeleteIntermediateFiles():
+	''' delete temporay files
+	'''
 	os.system('rm *.srt.txt')
 
-###############################################################################
+#------------------------------------------------------------------------------
 def main():
-	#if len(sys.argv) <= 2:
-	#	usage_smi2txt()
-	print "Converting SMI to SRT"
-	doBatchSmi2SrtConvert('UTF-8') #sys.argv[1])
-#	print "Converting SRT to TXT"
-#	doSrt2Txt('utf-8')
-#	print "Concatenation of text files"
-#	ConcatenateTxtFiles(sys.argv[2])
-#	print "Deleting temporary files"
-#	DeleteIntermediateFiles()	
+	if len(sys.argv) <= 1:
+		usage_smi2txt()
+	if sys.argv[1].upper() == 'SRT_ONLY':
+		print "Converting SMI files in current directory to SRT ..."
+		doBatchSmi2SrtConvert()
+	else:
+		print "1. Converting SMI files in current directory to SRT ..."
+		doBatchSmi2SrtConvert()
+		print "2. Converting SRT files in current directory to TXT ..."
+		doSrt2Txt('utf-8')
+		print "3. Concatenating text files"
+		if sys.argv[1][-4:].upper() != '.TXT':
+			output = sys.argv[1] + '.txt'
+		else:
+			output = sys.argv[1]
+		ConcatenateTxtFiles(output)
+		print "4. Deleting temporary files"
+		DeleteIntermediateFiles()	
 
-###############################################################################
+#------------------------------------------------------------------------------
 if __name__ == '__main__':
+	logging.basicConfig(level=logging.INFO)
 	main()

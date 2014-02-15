@@ -2,15 +2,15 @@
 
 '''
 2012.12.02
-srt which have multiple language subtitles(ex:english+korean), it will be separated 
-with individual language srt files(english and korean srt file).
+srt which have multiple language subtitles(ex:english+korean), it will be 
+separated with individual language srt files(english and korean srt file).
 
 '''
 
 
 #import time
 import os, sys
-from operator import itemgetter, attrgetter
+from operator import itemgetter, attrgetter #@UnusedImport
 
 
 def FindSrtFiles():
@@ -23,19 +23,19 @@ def FindSrtFiles():
 			filenames.append(s[0:-4])
 	return filenames
 
-###################################################################################################
+###############################################################################
 def ReadSrtFile (fname):
 	print 'Reading file ...'
 	fname = fname + '.srt'
 	f = open(fname, 'r')
-	count = 0
 	lines = f.readlines()
 	count = len(lines)
 	f.close()
 	print count, " lines"
 	return lines
-###################################################################################################
-#	subtitles = [ ['1', '00:00 --> 00:00', 'abcdef'], ['2', '00:01 --> 00:01', 'erqwer'], ....
+###############################################################################
+#	subtitles = [ ['1', '00:00 --> 00:00', 'abcdef'], 
+#                 ['2', '00:01 --> 00:01', 'erqwer'], ....
 
 def AnalysisSrt (lines, enc) :
 	print 'Analysis file ...'
@@ -65,7 +65,7 @@ def AnalysisSrt (lines, enc) :
 	print len(subtitles), 'subtiles'
 	return subtitles
 
-###################################################################################################
+###############################################################################
 # Find out whether this subtitles is multiple language subtitles.
 def isMultipleLanguageSubtitle( subtitles ):
 	prev_stime = 0
@@ -93,8 +93,9 @@ def isMultipleLanguageSubtitle( subtitles ):
 	return True;
 
 
-###################################################################################################
-#	subtitles = [ ['1', '00:00 --> 00:00', 'abcdef'], ['2', '00:01 --> 00:01', 'erqwer'], ....
+###############################################################################
+#	subtitles = [ ['1', '00:00 --> 00:00', 'abcdef'], 
+#                 ['2', '00:01 --> 00:01', 'erqwer'], ....
 #	subtitles[0] = ['1', '00:00 --> 00:00', 'abcdef']
 #
 def WriteNewSrtFiles(fname, subtitles):
@@ -161,7 +162,7 @@ def CopyBackup(src):
 	cmd = 'cp ' + src + ' ' + destfile
 	os.system(cmd)
 
-###################################################################################################
+###############################################################################
 def doSeparateSrt(enc):
 	fnames = FindSrtFiles()
 	for s in fnames:
@@ -178,11 +179,12 @@ def doSeparateSrt(enc):
 		#CopyBackup(src)
 		WriteNewSrtFiles(dest, subtitles)
 
-###################################################################################################
+###############################################################################
 def usage(msg=None, exit_code=1):
 	print_msg = """
 	usage %s encoding
-	convert current directory srt file which have multiple langes data to individual srt files
+	convert current directory srt file which have multiple langes data to 
+	individual srt files
 	By steven <ramsessk@gmail.com>
 """ % os.path.basename(sys.argv[0])
 	if msg:
@@ -190,13 +192,14 @@ def usage(msg=None, exit_code=1):
 	print print_msg
 	sys.exit(exit_code)
 
-###################################################################################################
+###############################################################################
 def main():
 	if len(sys.argv) <= 1:
 		usage()
-	print "Converting SRTs to SRT. All srt files in current directory will be converted"
+	print "Converting SRTs to SRT. All srt files in current directory will be \
+	converted"
 	doSeparateSrt(sys.argv[1])
 
-###################################################################################################
+###############################################################################
 if __name__ == '__main__':
 	main()

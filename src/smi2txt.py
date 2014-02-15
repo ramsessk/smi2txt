@@ -205,17 +205,17 @@ def convertSMI(smi_file, encoding):
 	return True
 
 ###################################################################################################
-def doBatchSmi2SrtConvert():
+def doBatchSmi2SrtConvert(enc):
 	files = []
 	dirs = os.listdir('./')
 	for s in dirs:
 		#print "s=", s, s[-4:]
 		if s[-4:] == '.smi':
-			#print "found:", s
+			print "found:", s
 			files.append(s)
 
 	for s in files:
-		if convertSMI(s, sys.argv[1]):
+		if convertSMI(s, enc):
 			print "Conversion done :", s
 		else:
 			print "Conversion fail :", s
@@ -398,16 +398,16 @@ def DeleteIntermediateFiles():
 
 ###################################################################################################
 def main():
-	if len(sys.argv) <= 2:
-		usage_smi2txt()
+	#if len(sys.argv) <= 2:
+	#	usage_smi2txt()
 	print "Converting SMI to SRT"
-	doBatchSmi2SrtConvert()
-	print "Converting SRT to TXT"
-	doSrt2Txt('utf-8')
-	print "Concatenation of text files"
-	ConcatenateTxtFiles(sys.argv[2])
-	print "Deleting temporary files"
-	DeleteIntermediateFiles()	
+	doBatchSmi2SrtConvert('UTF-8') #sys.argv[1])
+#	print "Converting SRT to TXT"
+#	doSrt2Txt('utf-8')
+#	print "Concatenation of text files"
+#	ConcatenateTxtFiles(sys.argv[2])
+#	print "Deleting temporary files"
+#	DeleteIntermediateFiles()	
 
 ###################################################################################################
 if __name__ == '__main__':

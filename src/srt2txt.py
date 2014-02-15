@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 #import time
@@ -8,11 +9,12 @@ from operator import itemgetter, attrgetter
 #
 
 
-###################################################################################################
+###############################################################################
 def usage_srt2txt(msg=None, exit_code=1):
 	print_msg = """
 usage %s Encoding
-	convert srt files in current directory into text(utf-8) files with same filename.
+	convert srt files in current directory into text(utf-8) files with same
+	filename.
 	By steven
 	Encoding : such as CP949, EUC_KR, UTF-8,...
 """ % os.path.basename(sys.argv[0])
@@ -22,7 +24,7 @@ usage %s Encoding
 	sys.exit(exit_code)
 
 
-###################################################################################################
+###############################################################################
 def FindSrtFiles():
 	filenames = []
 	dirs = os.listdir('./')
@@ -31,7 +33,7 @@ def FindSrtFiles():
 			filenames.append(s)
 	return filenames
 	
-###################################################################################################
+###############################################################################
 def ReadSrtFile (fname):
 	print 'Reading file ...'
 	f = open(fname, 'r')
@@ -41,12 +43,12 @@ def ReadSrtFile (fname):
 	f.close()
 	print count, " lines"
 	return lines
-###################################################################################################
+###############################################################################
 #--------------------------------------------
 #
 #	subtitles = [ ['1', '00:00 --> 00:00', 'abcdef'], ['2', '00:01 --> 00:01', 'erqwer'], ....
 #
-###################################################################################################
+###############################################################################
 def AnalysisSrt (lines, enc) :
 	print 'Analysis file ...'
 	subtitle = []
@@ -78,7 +80,7 @@ def AnalysisSrt (lines, enc) :
 	return subtitles
 
 
-###################################################################################################
+###############################################################################
 #--------------------------------------------
 def SortSubtitles( subtitles ):
 	subtitles = sorted(subtitles, key=itemgetter(1))
@@ -89,7 +91,7 @@ def SortSubtitles( subtitles ):
 	return subtitles
 
 
-###################################################################################################
+###############################################################################
 def PrintSubtitles(subtitles):
 	
 	n = 1
@@ -106,7 +108,7 @@ def PrintSubtitles(subtitles):
 			items = items + 1
 		n = n + 1
 
-###################################################################################################
+###############################################################################
 def WriteTxtSubtitles(subtitles, fname):
 
 	sorted_subtitles = SortSubtitles(subtitles)
@@ -131,7 +133,7 @@ def WriteTxtSubtitles(subtitles, fname):
 
 
 
-###################################################################################################
+###############################################################################
 def doSrt2Txt():
 
 	enc = sys.argv[1]
@@ -151,7 +153,7 @@ def doSrt2Txt():
 		WriteTxtSubtitles(sorted_subtitles, src)
 
 
-###################################################################################################
+###############################################################################
 if __name__ == '__main__':
 	if len(sys.argv) <= 1:
 		usage_srt2txt()

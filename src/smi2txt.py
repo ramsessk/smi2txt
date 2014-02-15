@@ -1,6 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 '''
+
+2012.12.02
+Process Sequence
+1. convert all smi at current directory to srt
+2. convert all srt at current directory to txt
+3. Concatenate all txt files at current directory
+4. Delete temp files 
+
+Converted srt file is UTF-8
+Converted txt file is UTF-8
+
+
 Started : 2012/11/20
 license: GPL
 
@@ -8,10 +20,10 @@ license: GPL
 @author: steven <ramsessk@gmail.com>
 
 SMI have this format!
-===================================================================================================
+===============================================================================
 
 SRT have this format!
-===================================================================================================
+===============================================================================
 1
 00:00:12,000 --> 00:00:15,123
 This is the first subtitle
@@ -32,13 +44,13 @@ __version__ = "1.0.0"
 __version_info__ = (1, 0, 0)
 __license__ = "GCQVista's NDA"
 
-###################################################################################################
+###############################################################################
 import os
 import sys
 import re
 from operator import itemgetter, attrgetter
 
-###################################################################################################
+###############################################################################
 def usage(msg=None, exit_code=1):
 	print_msg = """
 usage %s Encoding smifile.smi [...]
@@ -50,7 +62,7 @@ usage %s Encoding smifile.smi [...]
 	print print_msg
 	sys.exit(exit_code)
 
-###################################################################################################
+###############################################################################
 def usage_smi2txt(msg=None, exit_code=1):
 	print_msg = """
 usage %s Encoding TxtFileName
@@ -69,13 +81,13 @@ usage %s Encoding TxtFileName
 	sys.exit(exit_code)
 
 
-###################################################################################################
+###############################################################################
 #
 #			SMI to SRT
 #
-###################################################################################################
+###############################################################################
 
-###################################################################################################
+###############################################################################
 class smiItem(object):
 	def __init__(self):
 		self.start_ms = 0L
@@ -105,7 +117,8 @@ class smiItem(object):
 		# 3) remove web string like "&nbsp";
 		self.contents = re.sub(r'&[a-z]{2,5};', '', self.contents)
 		# 4) replace "<br>" with '\n';
-		self.contents = re.sub(r'(<br>)+', '\n', self.contents, flags=re.IGNORECASE)
+		self.contents = re.sub(r'(<br>)+', '\n', self.contents, \
+							flags=re.IGNORECASE)
 		# 5) find all tags
 		fndx = self.contents.find('<')
 		if fndx >= 0:
@@ -113,7 +126,8 @@ class smiItem(object):
 			sb = self.contents[0:fndx]
 			contents = contents[fndx:]
 			while True:
-				m = re.match(r'</?([a-z]+)[^>]*>([^<>]*)', contents, flags=re.IGNORECASE)
+				m = re.match(r'</?([a-z]+)[^>]*>([^<>]*)', contents, \
+							flags=re.IGNORECASE)
 				if m == None: break
 				contents = contents[m.end(2):]
 				#if m.group(1).lower() in ['font', 'b', 'i', 'u']:
@@ -124,10 +138,11 @@ class smiItem(object):
 		self.contents = self.contents.strip()
 		self.contents = self.contents.strip('\n')
 	def __repr__(self):
-		s = '%d:%d:<%s>:%d' % (self.start_ms, self.end_ms, self.contents, self.linecount)
+		s = '%d:%d:<%s>:%d' % (self.start_ms, self.end_ms, self.contents, \
+							self.linecount)
 		return s
 
-###################################################################################################
+###############################################################################
 def convertSMI(smi_file, encoding):
 	if not os.path.exists(smi_file):
 		sys.stderr.write('Cannot find smi file <%s>\n' % smi_file)
@@ -170,7 +185,8 @@ def convertSMI(smi_file, encoding):
 		#print linecnt, line
 		sndx = line.upper().find('<SYNC')
 		if sndx >= 0:
-			m = re.search(r'<sync\s+start\s*=\s*(\d+)>(.*)$', line, flags=re.IGNORECASE)
+			m = re.search(r'<sync\s+start\s*=\s*(\d+)>(.*)$', line, \
+						flags=re.IGNORECASE)
 			if not m:
 				#raise Exception('Invalid format tag of <Sync start=nnnn> with "%s"' % line)
 				print 'Invalid format tag of <Sync start=nnnn> with "%s"' % line
@@ -196,7 +212,8 @@ def convertSMI(smi_file, encoding):
 		if si.contents == None or len(si.contents) <= 0:
 			continue
 		#print si
-		sistr = '%d\n%s --> %s\n%s\n\n' % (ndx, si.start_ts, si.end_ts, si.contents)
+		sistr = '%d\n%s --> %s\n%s\n\n' % (ndx, si.start_ts, si.end_ts, \
+										si.contents)
 		#sistr = unicode(sistr, 'utf-8').encode('euc-kr')
 		ofp.write(sistr)
 		#print sistr,
@@ -204,14 +221,14 @@ def convertSMI(smi_file, encoding):
 	ofp.close()
 	return True
 
-###################################################################################################
+###############################################################################
 def doBatchSmi2SrtConvert(enc):
 	files = []
 	dirs = os.listdir('./')
 	for s in dirs:
 		#print "s=", s, s[-4:]
 		if s[-4:] == '.smi':
-			print "found:", s
+			#print "found:", s
 			files.append(s)
 
 	for s in files:
@@ -221,13 +238,13 @@ def doBatchSmi2SrtConvert(enc):
 			print "Conversion fail :", s
 
 
-###################################################################################################
+###############################################################################
 #
 #			SRT to TXT
 #
-###################################################################################################
+###############################################################################
 
-###################################################################################################
+###############################################################################
 def FindSrtFiles():
 	filenames = []
 	dirs = os.listdir('./')
@@ -236,7 +253,7 @@ def FindSrtFiles():
 			filenames.append(s)
 	return filenames
 	
-###################################################################################################
+###############################################################################
 def ReadSrtFile (fname):
 	print 'Reading file ...'
 	f = open(fname, 'r')
@@ -246,12 +263,13 @@ def ReadSrtFile (fname):
 	f.close()
 	print count, " lines"
 	return lines
-###################################################################################################
+###############################################################################
 #--------------------------------------------
 #
-#	subtitles = [ ['1', '00:00 --> 00:00', 'abcdef'], ['2', '00:01 --> 00:01', 'erqwer'], ....
+#	subtitles = [ ['1', '00:00 --> 00:00', 'abcdef'], \
+#				  ['2', '00:01 --> 00:01', 'erqwer'], ....
 #
-###################################################################################################
+###############################################################################
 def AnalysisSrt (lines, enc) :
 	print 'Analysis file ...'
 	subtitle = []
@@ -283,7 +301,7 @@ def AnalysisSrt (lines, enc) :
 	return subtitles
 
 
-###################################################################################################
+###############################################################################
 #--------------------------------------------
 def SortSubtitles( subtitles ):
 	subtitles = sorted(subtitles, key=itemgetter(1))
@@ -294,7 +312,7 @@ def SortSubtitles( subtitles ):
 	return subtitles
 
 
-###################################################################################################
+###############################################################################
 def PrintSubtitles(subtitles):
 	
 	n = 1
@@ -311,7 +329,7 @@ def PrintSubtitles(subtitles):
 			items = items + 1
 		n = n + 1
 
-###################################################################################################
+###############################################################################
 def WriteTxtSubtitles(subtitles, fname):
 
 	sorted_subtitles = SortSubtitles(subtitles)
@@ -336,7 +354,7 @@ def WriteTxtSubtitles(subtitles, fname):
 
 
 
-###################################################################################################
+###############################################################################
 def doSrt2Txt(encode):
 
 	enc = encode
@@ -356,11 +374,11 @@ def doSrt2Txt(encode):
 		WriteTxtSubtitles(sorted_subtitles, src)
 
 
-###################################################################################################
+###############################################################################
 #
 #			concatenate txt files
 #
-###################################################################################################
+###############################################################################
 def ConcatenateTxtFiles(fname):
 	files = []
 
@@ -396,7 +414,7 @@ def ConcatenateTxtFiles(fname):
 def DeleteIntermediateFiles():
 	os.system('rm *.srt.txt')
 
-###################################################################################################
+###############################################################################
 def main():
 	#if len(sys.argv) <= 2:
 	#	usage_smi2txt()
@@ -409,6 +427,6 @@ def main():
 #	print "Deleting temporary files"
 #	DeleteIntermediateFiles()	
 
-###################################################################################################
+###############################################################################
 if __name__ == '__main__':
 	main()

@@ -40,8 +40,8 @@ Another subtitle demonstrating position.
 '''
 __author__ = "steven <mcchae@gmail.com>"
 __date__ = "2014/02/15"
-__version__ = "1.1.1"
-__version_info__ = (1, 1, 1)
+__version__ = "1.2.0"
+__version_info__ = (1, 2, 0)
 __license__ = "GCQVista's NDA"
 
 import os
@@ -55,6 +55,8 @@ except:
 	print '''chardet python package not found. Please install it using
 macports or pip'''
 	sys.exit()
+import codecs
+
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 def usage_smi2txt(msg=None, exit_code=1):
@@ -72,7 +74,15 @@ usage: $python {0} [TxtFileName] [srt_only]
 	Project location: https://github.com/ramsessk/smi2txt.git
 	
 	example : $python smi2txt.py spider_man
+			  -> convert all smi files in CURRENT DIRECTORY and save those to
+			  a spider_man.txt
+			  
 	          $python smi2txt.py srt_only
+	          -> convert all smi files in CURRENT DIRECTORY to the srt file.
+	          
+	          $python smi2txt.py CHAR_CONV srt smi xxx 
+	          -> convert all .srt, .smi and .xxx files in CURRENT DIRECTORY 
+	          and SUB-DIRECTORIES to same file with UTF-8 encoding.
 """.format(os.path.basename(sys.argv[0]), __version__)
 	if msg:
 		print_msg += '%s\n' % msg
@@ -180,9 +190,10 @@ def convertSMI(smi_file, encoding):
 	try:
 		fndx = smi_sgml.find('<SYNC')
 	except Exception, e:
-		print chdt
+		logging.debug(chdt)
 		raise e
 	if fndx < 0:
+		logging.error("No <SYNC string found, maybe it is not smi file")
 		return False
 	smi_sgml = smi_sgml[fndx:]
 	lines = smi_sgml.split('\n')
@@ -194,7 +205,7 @@ def convertSMI(smi_file, encoding):
 	linecnt = 0
 	for line in lines:
 		linecnt += 1
-		logging.debug(linecnt, line)
+		#logging.debug(linecnt, line)
 		line = line.encode('UTF-8')
 		sndx = line.upper().find('<SYNC')
 		if sndx >= 0:
@@ -223,11 +234,11 @@ def convertSMI(smi_file, encoding):
 		si.convertSrt()
 		if si.contents == None or len(si.contents) <= 0:
 			continue
-		logging.debug(si)
+		#logging.debug(si)
 		sistr = '%d\n%s --> %s\n%s\n\n' % (ndx, si.start_ts, si.end_ts, \
 										si.contents)
 		ofp.write(sistr)
-		logging.debug(sistr)
+		#logging.debug(sistr)
 		ndx += 1
 	ofp.close()
 	return True
@@ -403,11 +414,95 @@ def DeleteIntermediateFiles():
 	'''
 	os.system('rm *.srt.txt')
 
+
+#------------------------------------------------------------------------------
+def doBatchEncoding():
+	''' convert file encoding to UTF-8.
+    Seaching current directory and subdirectory recursively
+    '''
+
+	extensions = []
+	jobs = []
+	i = 2
+	while i < len(sys.argv):
+		extensions.append(sys.argv[i])
+		i = i + 1
+
+	if len(extensions) == 0:
+		logging.error("No extensions provided")
+		sys.exit(1)
+
+	logging.info("extensions to find = {0}".format(extensions))
+
+	# finding list of file which have extension requested and which encoding
+	# is not utf-8
+	cwd = os.getcwd()
+	for root, _, files in os.walk(".", topdown=False, followlinks=False):
+		for name in files:
+			if len(root) > 1:
+				fname = os.path.join(cwd, root[2:], name)
+			else:
+				fname = os.path.join(cwd, name)
+			rndx = fname.rfind('.')
+			if rndx > 0 and fname[rndx+1:] in extensions:
+				logging.info("checking: {0}".format(name))
+				with open(fname) as f:
+					lines = f.read()
+				chdt = chardet.detect(lines)
+				if chdt['encoding'] != None and \
+					chdt['encoding'].upper() != 'UTF-8' and \
+					chdt['encoding'].upper() != 'ASCII':
+						tmp = (fname, chdt['encoding'])
+						logging.info('Found = {0}, encoding={1}'.format(\
+									tmp[0], tmp[1]))
+						jobs.append(tmp)
+
+	# convert encoding ...
+	print "Starting conversion ..."
+	if len(jobs) == 0:
+		logging.info("There is no file to convert")
+		return
+	
+	for job in jobs:
+		logging.info("Converting file {0}, {1}".format(job[0], job[1]))
+		with open(job[0]) as f:
+			lines = f.read()
+		ofname = job[0] + '.tmp'
+		converted = unicode(lines, job[1])
+		with codecs.open(ofname, 'w+', 'utf-8') as f:
+			try:
+				f.write(converted)
+				logging.info("writing to {0}".format(ofname))
+			except BaseException as e:
+				logging.error("***Error occured during writing file {0}, {1}".\
+							format(ofname, str(e)))
+				return
+			# change the file name
+			bk_name = job[0] + '.bk.000'
+			while os.path.exists(bk_name):
+				n = bk_name.rfind('.')
+				num = int(bk_name[n+1:])
+				num = num + 1
+				bk_name = job[0] + '.bk.' + "{0:#03d}".format(num)
+			
+			cmd = 'cp ' + '\"' + job[0] + '\"' +  ' ' + '\"' + bk_name + '\"'
+			logging.info("executing: {0}".format(cmd))
+			os.system(cmd)
+			
+			cmd = 'mv ' + '\"' + ofname + '\"' + ' ' + '\"' + ofname[:-4] + '\"'
+			logging.info("executing: {0}".format(cmd))
+			os.system(cmd)
+
+
 #------------------------------------------------------------------------------
 def main():
 	if len(sys.argv) <= 1:
 		usage_smi2txt()
-	if sys.argv[1].upper() == 'SRT_ONLY':
+
+	if sys.argv[1].upper() == 'CHAR_CONV':
+		print "Converting files encoding to UTF8 ..."
+		doBatchEncoding()
+	elif sys.argv[1].upper() == 'SRT_ONLY':
 		print "Converting SMI files in current directory to SRT ..."
 		doBatchSmi2SrtConvert()
 	else:

@@ -41,7 +41,7 @@ Another subtitle demonstrating position.
 __author__ = "steven <mcchae@gmail.com>"
 __date__ = "2014/02/15"
 __version__ = "1.2.0"
-__version_info__ = (1, 2, 0)
+__version_info__ = (1, 2, 1)
 __license__ = "GCQVista's NDA"
 
 import os
@@ -214,7 +214,8 @@ def convertSMI(smi_file, encoding):
 			if not m:
 				logging.error('Invalid format tag of <Sync start=nnnn> with \
 				{0}'.format(line))
-				return False
+				continue		# ignore the wrong format line
+				#return False
 			sync_cont += line[0:sndx]
 			last_si = si
 			if last_si != None:

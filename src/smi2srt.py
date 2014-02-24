@@ -125,116 +125,105 @@ class smiItem(object):
         return s
 
 #------------------------------------------------------------------------------
-def convertSMI(smi_file, encoding):
-    ''' convert smi file to srt format with encoding provided.
+class SMI2SRT(smiItem):
     '''
-    if not os.path.exists(smi_file):
-        logger.error('Cannot find smi file {0}\n'.format(smi_file))
-        return False
-    rndx = smi_file.rfind('.')
-    srt_file = '%s.srt' % smi_file[0:rndx]
+    
+    encoding : encoding for srt file
+    '''
+    def __init__(self, smi, encoding):
+        self.smifile = smi
+        self.encoding = encoding
 
-    ifp = open(smi_file)
-    smi_sgml = ifp.read()#.upper()
-    ifp.close()
-    if encoding == "":
+    def convert_smi(self):
+        ''' convert smi file to srt format with encoding provided.
+    
+        return True or Flase
+        '''
+        if not self.smifile.lower().endswith('.smi'):
+            logger.error("Not smi file:".format(self.smifile))
+            return False
+    
+        if not os.path.exists(self.smifile):
+            logger.error('Cannot find smi file {0}\n'.format(self.smifile))
+            return False
+        rndx = self.smifile.rfind('.')
+        srt_file = '%s.srt' % self.smifile[0:rndx]
+    
+        with open(self.smifile) as ifp:
+            smi_sgml = ifp.read()#.upper()
+    
         chdt = chardet.detect(smi_sgml)
-        logger.info("{0} encoding is {1}".format(smi_file, chdt['encoding']))
-        if chdt['encoding'] != 'UTF-8':
+        logger.info("{0} encoding is {1}".format(self.smifile, \
+                                                 chdt['encoding']))
+        if chdt['encoding'].lower() != 'utf-8':
             try:
+                # smi_sgml with chdt['encoding'] --convert--> unicode
                 smi_sgml = unicode(smi_sgml, chdt['encoding'].lower())
             except:
                 logger.error("Error : unicode(smi_sgml, chdt) in {0}".\
-                            format(smi_file))
+                            format(self.smifile))
                 return False
-    else:
-        chdt = encoding
-        logger.info("{0} encoding is {1}".format(smi_file, encoding))
-        if chdt != 'UTF-8':
-            try:
-                smi_sgml = unicode(smi_sgml, chdt)
-            except:
-                logger.error("Error : unicode(smi_sgml, chdt) in {0}".\
-                            format(smi_file))
-                return False
+           
+                
+        # skip to first starting tag (skip first 0xff 0xfe ...)
+        try:
+            fndx = smi_sgml.find('<SYNC')
+        except Exception, e:
+            logger.debug(chdt)
+            raise e
+        if fndx < 0:
+            logger.error("No <SYNC string found, maybe it is not smi file")
+            return False
+        smi_sgml = smi_sgml[fndx:]
+        lines = smi_sgml.split('\n')
         
+        srt_list = []
+        sync_cont = ''
+        si = None
+        last_si = None
+        linecnt = 0
+        for line in lines:
+            linecnt += 1
             
-    # skip to first starting tag (skip first 0xff 0xfe ...)
-    try:
-        fndx = smi_sgml.find('<SYNC')
-    except Exception, e:
-        logger.debug(chdt)
-        raise e
-    if fndx < 0:
-        logger.error("No <SYNC string found, maybe it is not smi file")
-        return False
-    smi_sgml = smi_sgml[fndx:]
-    lines = smi_sgml.split('\n')
-    
-    srt_list = []
-    sync_cont = ''
-    si = None
-    last_si = None
-    linecnt = 0
-    for line in lines:
-        linecnt += 1
-        #logger.debug(linecnt, line)
-        line = line.encode('UTF-8')
-        sndx = line.upper().find('<SYNC')
-        if sndx >= 0:
-            m = re.search(r'<sync\s+start\s*=\s*(\d+)>(.*)$', line, \
-                        flags=re.IGNORECASE)
-            if not m:
-                logger.error('Invalid format tag of <Sync start=nnnn> with \
-                {0}'.format(line))
-                continue        # ignore the wrong format line
-                #return False
-            sync_cont += line[0:sndx]
-            last_si = si
-            if last_si != None:
-                last_si.end_ms = long(m.group(1))
-                last_si.contents = sync_cont
-                srt_list.append(last_si)
-                last_si.linecount = linecnt
-            sync_cont = m.group(2)
-            si = smiItem()
-            si.start_ms = long(m.group(1))
-        else:
-            sync_cont += line
-            
-    ofp = open(srt_file, 'w')
-    ndx = 1
-    for si in srt_list:
-        si.convertSrt()
-        if si.contents == None or len(si.contents) <= 0:
-            continue
-        #logger.debug(si)
-        sistr = '%d\n%s --> %s\n%s\n\n' % (ndx, si.start_ts, si.end_ts, \
-                                        si.contents)
-        ofp.write(sistr)
-        #logger.debug(sistr)
-        ndx += 1
-    ofp.close()
-    return True
-
-#------------------------------------------------------------------------------
-def doBatchSmi2SrtConvert(enc=""):
-    '''
-    batch job for coverting smi files to srt in the current directory.
-    '''
-    files = []
-    dirs = os.listdir('./')
-    for s in dirs:
-        if s[-4:] == '.smi':
-            logger.info("Found:{0}".format(s))
-            files.append(s)
-
-    for s in files:
-        if convertSMI(s, enc):
-            logger.info("Conversion done : {0}".format(s))
-        else:
-            logger.info("Conversion fail : {0}".format(s))
-
+            #http://stackoverflow.com/questions/11339955/python-string-encode-decode
+            if chdt['encoding'].lower() != 'utf-8':
+                line = line.encode('UTF-8')
+            sndx = line.upper().find('<SYNC')
+            if sndx >= 0:
+                m = re.search(r'<sync\s+start\s*=\s*(\d+)>(.*)$', line, \
+                            flags=re.IGNORECASE)
+                if not m:
+                    logger.error('Invalid format tag of <Sync start=nnnn> with \
+                    {0}'.format(line))
+                    continue        # ignore the wrong format line
+                    #return False
+                sync_cont += line[0:sndx]
+                last_si = si
+                if last_si != None:
+                    last_si.end_ms = long(m.group(1))
+                    last_si.contents = sync_cont
+                    srt_list.append(last_si)
+                    last_si.linecount = linecnt
+                sync_cont = m.group(2)
+                si = smiItem()
+                si.start_ms = long(m.group(1))
+            else:
+                sync_cont += line
+                
+        ofp = open(srt_file, 'w')
+        ndx = 1
+        for si in srt_list:
+            si.convertSrt()
+            if si.contents == None or len(si.contents) <= 0:
+                continue
+            #logger.debug(si)
+            sistr = '%d\n%s --> %s\n%s\n\n' % (ndx, si.start_ts, si.end_ts, \
+                                            si.contents)
+            ofp.write(sistr)
+            #logger.debug(sistr)
+            ndx += 1
+        ofp.close()
+        return True
 
 #------------------------------------------------------------------------------
 #
@@ -278,30 +267,11 @@ def AnalysisSrt (lines, enc) :
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 def main():
-    if len(sys.argv) <= 1:
-        usage_smi2txt()
-
-    if sys.argv[1].upper() == 'CHAR_CONV':
-        print "Converting files encoding to UTF8 ..."
-        doBatchEncoding()
-    elif sys.argv[1].upper() == 'SRT_ONLY':
-        print "Converting SMI files in current directory to SRT ..."
-        doBatchSmi2SrtConvert()
-    else:
-        print "1. Converting SMI files in current directory to SRT ..."
-        doBatchSmi2SrtConvert()
-        print "2. Converting SRT files in current directory to TXT ..."
-        doSrt2Txt('utf-8')
-        print "3. Concatenating text files"
-        if sys.argv[1][-4:].upper() != '.TXT':
-            output = sys.argv[1] + '.txt'
-        else:
-            output = sys.argv[1]
-        ConcatenateTxtFiles(output)
-        print "4. Deleting temporary files"
-        DeleteIntermediateFiles()    
+    
+    obj = SMI2SRT(smi=sys.argv[1], encoding='UTF-8')
+    obj.convert_smi()
 
 #------------------------------------------------------------------------------
 if __name__ == '__main__':
-    logger.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO)
     main()

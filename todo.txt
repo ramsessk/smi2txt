@@ -1,1 +1,6 @@
 encode(), decode(), unicode() .....study
+25/02/14
+more comments
+simplify smi2txt.py
+to include srts_2_srt in mp4encode
+

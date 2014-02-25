@@ -2,21 +2,14 @@
 # -*- coding: UTF-8 -*-
 '''
 
-2012.12.02
-Process Sequence
-1. convert all smi at current directory to srt
-2. convert all srt at current directory to txt
-3. Concatenate all txt files at current directory
-4. Delete temp files 
+2014.2.25
+Class for converting smi to srt including encoding.
+It detect encoding of smi file and convert it to the user provided encoding.
 
-Converted srt file is UTF-8
-Converted txt file is UTF-8
-
-
-Started : 2012/11/20
+Started : 2014/2/25
 license: GPL
 
-@version: 1.1.0
+@version: 1.0.0
 @author: steven <ramsessk@gmail.com>
 
 SMI have this format!
@@ -40,8 +33,9 @@ Another subtitle demonstrating position.
 '''
 __author__ = "steven <mcchae@gmail.com>"
 __date__ = "2014/02/15"
-__version__ = "1.2.1"
-__version_info__ = (1, 2, 1)
+__version_info__ = (1, 0, 0)
+__version__ = "{0}.{1}.{2}".format(__version_info__[0], __version_info__[1], \
+                __version_info__[2])
 __license__ = "GCQVista's NDA"
 
 import os
@@ -61,11 +55,7 @@ import codecs
 logger = logging.getLogger(__name__)
 
 #------------------------------------------------------------------------------
-#-----------------------------------------------------------------------------
-#------------------------------------------------------------------------------
-#
 #            SMI to SRT
-#
 #------------------------------------------------------------------------------
 class smiItem(object):
     ''' smiItem class
@@ -127,16 +117,25 @@ class smiItem(object):
 #------------------------------------------------------------------------------
 class SMI2SRT(smiItem):
     '''
-    
-    encoding : encoding for srt file
+    Convert smi file to srt format with the provided encoding format.
+   
+    public attribute: 
+    smi: smi file to be converted to srt format 
+    encoding: encoding for srt file to be saved
+    titles: srt file contents in UTF-8 even though srt file to be written
+              might have the different encoding
+    convereted: status of conversion
     '''
     def __init__(self, smi, encoding):
         self.smifile = smi
         self.encoding = encoding
+        self.titles = []
+        self.converted = False
 
-    def convert_smi(self):
+    def convert_smi(self, srtfile=""):
         ''' convert smi file to srt format with encoding provided.
-    
+        Default srt file name is same as smi except extention which is .srt 
+        
         return True or Flase
         '''
         if not self.smifile.lower().endswith('.smi'):
@@ -146,15 +145,19 @@ class SMI2SRT(smiItem):
         if not os.path.exists(self.smifile):
             logger.error('Cannot find smi file {0}\n'.format(self.smifile))
             return False
-        rndx = self.smifile.rfind('.')
-        srt_file = '%s.srt' % self.smifile[0:rndx]
+
+        if srtfile == "":
+            rndx = self.smifile.rfind('.')
+            srt_file = '%s.srt' % self.smifile[0:rndx]
+        else:
+            srt_file = srtfile
     
         with open(self.smifile) as ifp:
-            smi_sgml = ifp.read()#.upper()
+            smi_sgml = ifp.read()
     
         chdt = chardet.detect(smi_sgml)
-        logger.info("{0} encoding is {1}".format(self.smifile, \
-                                                 chdt['encoding']))
+        logger.info("{0} encoding is {1} with condidence {2}". \
+                format(self.smifile, chdt['encoding'], chdt['confidence']))
         if chdt['encoding'].lower() != 'utf-8':
             try:
                 # smi_sgml with chdt['encoding'] --convert--> unicode
@@ -163,7 +166,6 @@ class SMI2SRT(smiItem):
                 logger.error("Error : unicode(smi_sgml, chdt) in {0}".\
                             format(self.smifile))
                 return False
-           
                 
         # skip to first starting tag (skip first 0xff 0xfe ...)
         try:
@@ -186,6 +188,7 @@ class SMI2SRT(smiItem):
             linecnt += 1
             
             #http://stackoverflow.com/questions/11339955/python-string-encode-decode
+            # convert smi contents to utf-8 for re
             if chdt['encoding'].lower() != 'utf-8':
                 line = line.encode('UTF-8')
             sndx = line.upper().find('<SYNC')
@@ -209,69 +212,92 @@ class SMI2SRT(smiItem):
                 si.start_ms = long(m.group(1))
             else:
                 sync_cont += line
-                
-        ofp = open(srt_file, 'w')
-        ndx = 1
-        for si in srt_list:
-            si.convertSrt()
-            if si.contents == None or len(si.contents) <= 0:
-                continue
-            #logger.debug(si)
-            sistr = '%d\n%s --> %s\n%s\n\n' % (ndx, si.start_ts, si.end_ts, \
-                                            si.contents)
-            ofp.write(sistr)
-            #logger.debug(sistr)
-            ndx += 1
-        ofp.close()
+        
+        # open file with required encoding        
+        with codecs.open(srt_file, 'w', self.encoding) as ofp:
+            ndx = 1
+            for si in srt_list:
+                si.convertSrt()
+                if si.contents == None or len(si.contents) <= 0:
+                    continue
+                sistr = '%d\n%s --> %s\n%s\n\n' % (ndx, si.start_ts, \
+                                        si.end_ts, si.contents)
+                for s in sistr.strip().split('\n'):
+                    self.titles.append(s)
+                converted = unicode(sistr, 'UTF-8')
+                ofp.write(converted)
+                ndx += 1
+            logger.info("Written file {0} in {1}".\
+                        format(srt_file, self.encoding))
+            self.converted = True
         return True
 
-#------------------------------------------------------------------------------
-#
-#    subtitles = [ ['1', '00:00 --> 00:00', 'abcdef'], \
-#                  ['2', '00:01 --> 00:01', 'erqwer'], ....
-#
-#------------------------------------------------------------------------------
-def AnalysisSrt (lines, enc) :
-    ''' Analysis subtiles for sorting
-    '''
-    logger.info('Analysis file ...')
-    subtitle = []
-    subtitles = []
-    n = 0
-    num_of_subtitles = 0
-    new_line_started = True
-    for line in lines:
-        line.lstrip()
-        line = line.replace('\r\n','\n')
-        line = line.decode(enc)
-        #print len(line), line,
-        if len(line) > 1 :
-            new_line_started = True
-        elif len(line) == 1:
-            new_line_started = False
-            subtitles.append(subtitle)
-            num_of_subtitles = num_of_subtitles +1
-            #print num_of_subtitles, subtitle[0]
-            #print subtitle
-            subtitle = []
-        if new_line_started :
-            subtitle.append(line)
+    def analysis_srt(self) :
+        ''' Convert srt file to simplified list to use it easily.
+        If smi is not converted srt yet, it will convert it first with
+        default srt file name.
         
-        n = n+1
-    #    if num_of_subtitles > 20:
-    #        break
-    logger.info("{0} subtitles".format(len(subtitles)))
-    
-    return subtitles
+        list format to be returned would be:
+        subtitles = [ ['1', '00:00 --> 00:00', 'hi steven'], 
+                      ['2', '00:01 --> 00:01', 'Im' fine!], ....
+        subtitles[0] = ['1', '00:00 --> 00:00', 'hi steven']
+        
+        if error, return empty list
+        '''
+        if not self.converted:
+            logger.info("smi file {0} not yet converted to srt". \
+                        format(self.smifile))
+            if self.convert_smi(self.srtfile) == False:
+                logger.error("Conversion error")
+                return []
 
-#------------------------------------------------------------------------------
-#------------------------------------------------------------------------------
-def main():
-    
-    obj = SMI2SRT(smi=sys.argv[1], encoding='UTF-8')
-    obj.convert_smi()
+        logger.info("Analysis a srt file ...")
+        subtitle = []
+        subtitles = []
+        new_subtitle = False
+        #lines = self.contents.split('\n')
+        for line in self.titles:
+            line = line.strip()
+            line += '\n'            # strip and replace \r\n to \n
+            #line = line.decode(self.encode)  # writing file is utf-8
+            if len(line) <= 1:      # consider '\n'
+                continue
+            
+            isnumber = True
+            try:
+                int(line)
+            except:
+                isnumber = False
+                pass
+            
+            if( len(line.split()) == 1 and new_subtitle == False and isnumber):
+                new_subtitle = True
+                if len(subtitle) > 0:
+                    subtitles.append(subtitle)
+                    subtitle = []
+                subtitle.append(line)
+            else:
+                new_subtitle = False
+                if len(line) >1:            # consider '\n'
+                    subtitle.append(line)
+
+        # save last one
+        if len(subtitle) > 0:
+            subtitles.append(subtitle)
+        logger.info("{0} subtitles".format(len(subtitles)))
+
+        return subtitles
+   
 
 #------------------------------------------------------------------------------
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    main()
+
+    if len(sys.argv) < 2:
+        print ("$python smi2srt.py smifile encoding")
+        sys.exit(1) 
+    obj = SMI2SRT(smi=sys.argv[1], encoding=sys.argv[2])
+    obj.convert_smi()
+    st = obj.analysis_srt()
+    print st[0]
+    print st[0][2]

@@ -56,6 +56,8 @@ except:
 macports or pip'''
     sys.exit()
 import codecs
+import smi2srt
+
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
@@ -90,161 +92,6 @@ usage: $python {0} [TxtFileName] [srt_only]
     sys.exit(exit_code)
 
 #------------------------------------------------------------------------------
-#
-#            SMI to SRT
-#
-#------------------------------------------------------------------------------
-class smiItem(object):
-    ''' smiItem class
-    convert smi to srt format.
-    '''
-    def __init__(self):
-        self.start_ms = 0L
-        self.start_ts = '00:00:00,000'
-        self.end_ms = 0L
-        self.end_ts = '00:00:00,000'
-        self.contents = None
-        self.linecount = 0
-    @staticmethod
-    def ms2ts(ms):
-        hours = ms / 3600000L
-        ms -= hours * 3600000L
-        minutes = ms / 60000L
-        ms -= minutes * 60000L
-        seconds = ms / 1000L
-        ms -= seconds * 1000L
-        s = '%02d:%02d:%02d,%03d' % (hours, minutes, seconds, ms)
-        return s
-    def convertSrt(self):
-        if self.linecount == 4:
-            i=1 #@UnusedVariable
-        # 1) convert timestamp
-        self.start_ts = smiItem.ms2ts(self.start_ms)
-        self.end_ts = smiItem.ms2ts(self.end_ms-10)
-        # 2) remove new-line
-        self.contents = re.sub(r'\s+', ' ', self.contents)
-        # 3) remove web string like "&nbsp";
-        self.contents = re.sub(r'&[a-z]{2,5};', '', self.contents)
-        # 4) replace "<br>" with '\n';
-        self.contents = re.sub(r'(<br>)+', '\n', self.contents, \
-                            flags=re.IGNORECASE)
-        # 5) find all tags
-        fndx = self.contents.find('<')
-        if fndx >= 0:
-            contents = self.contents
-            sb = self.contents[0:fndx]
-            contents = contents[fndx:]
-            while True:
-                m = re.match(r'</?([a-z]+)[^>]*>([^<>]*)', contents, \
-                            flags=re.IGNORECASE)
-                if m == None: break
-                contents = contents[m.end(2):]
-                #if m.group(1).lower() in ['font', 'b', 'i', 'u']:
-                if m.group(1).lower() in ['b', 'i', 'u']:
-                    sb += m.string[0:m.start(2)]
-                sb += m.group(2)
-            self.contents = sb
-        self.contents = self.contents.strip()
-        self.contents = self.contents.strip('\n')
-    def __repr__(self):
-        s = '%d:%d:<%s>:%d' % (self.start_ms, self.end_ms, self.contents, \
-                            self.linecount)
-        return s
-
-#------------------------------------------------------------------------------
-def convertSMI(smi_file, encoding):
-    ''' convert smi file to srt format with encoding provided.
-    '''
-    if not os.path.exists(smi_file):
-        logging.error('Cannot find smi file {0}\n'.format(smi_file))
-        return False
-    rndx = smi_file.rfind('.')
-    srt_file = '%s.srt' % smi_file[0:rndx]
-
-    ifp = open(smi_file)
-    smi_sgml = ifp.read()#.upper()
-    ifp.close()
-    if encoding == "":
-        chdt = chardet.detect(smi_sgml)
-        logging.info("{0} encoding is {1}".format(smi_file, chdt['encoding']))
-        if chdt['encoding'] != 'UTF-8':
-            try:
-                smi_sgml = unicode(smi_sgml, chdt['encoding'].lower())
-            except:
-                logging.error("Error : unicode(smi_sgml, chdt) in {0}".\
-                            format(smi_file))
-                return False
-    else:
-        chdt = encoding
-        logging.info("{0} encoding is {1}".format(smi_file, encoding))
-        if chdt != 'UTF-8':
-            try:
-                smi_sgml = unicode(smi_sgml, chdt)
-            except:
-                logging.error("Error : unicode(smi_sgml, chdt) in {0}".\
-                            format(smi_file))
-                return False
-        
-            
-    # skip to first starting tag (skip first 0xff 0xfe ...)
-    try:
-        fndx = smi_sgml.find('<SYNC')
-    except Exception, e:
-        logging.debug(chdt)
-        raise e
-    if fndx < 0:
-        logging.error("No <SYNC string found, maybe it is not smi file")
-        return False
-    smi_sgml = smi_sgml[fndx:]
-    lines = smi_sgml.split('\n')
-    
-    srt_list = []
-    sync_cont = ''
-    si = None
-    last_si = None
-    linecnt = 0
-    for line in lines:
-        linecnt += 1
-        #logging.debug(linecnt, line)
-        line = line.encode('UTF-8')
-        sndx = line.upper().find('<SYNC')
-        if sndx >= 0:
-            m = re.search(r'<sync\s+start\s*=\s*(\d+)>(.*)$', line, \
-                        flags=re.IGNORECASE)
-            if not m:
-                logging.error('Invalid format tag of <Sync start=nnnn> with \
-                {0}'.format(line))
-                continue        # ignore the wrong format line
-                #return False
-            sync_cont += line[0:sndx]
-            last_si = si
-            if last_si != None:
-                last_si.end_ms = long(m.group(1))
-                last_si.contents = sync_cont
-                srt_list.append(last_si)
-                last_si.linecount = linecnt
-            sync_cont = m.group(2)
-            si = smiItem()
-            si.start_ms = long(m.group(1))
-        else:
-            sync_cont += line
-            
-    ofp = open(srt_file, 'w')
-    ndx = 1
-    for si in srt_list:
-        si.convertSrt()
-        if si.contents == None or len(si.contents) <= 0:
-            continue
-        #logging.debug(si)
-        sistr = '%d\n%s --> %s\n%s\n\n' % (ndx, si.start_ts, si.end_ts, \
-                                        si.contents)
-        ofp.write(sistr)
-        #logging.debug(sistr)
-        ndx += 1
-    ofp.close()
-    return True
-
-#------------------------------------------------------------------------------
 def doBatchSmi2SrtConvert(enc=""):
     '''
     batch job for coverting smi files to srt in the current directory.
@@ -257,7 +104,8 @@ def doBatchSmi2SrtConvert(enc=""):
             files.append(s)
 
     for s in files:
-        if convertSMI(s, enc):
+        srt = smi2srt.SMI2SRT(s, enc)
+        if srt.convert_smi():
             logging.info("Conversion done : {0}".format(s))
         else:
             logging.info("Conversion fail : {0}".format(s))

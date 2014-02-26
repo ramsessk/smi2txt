@@ -120,7 +120,7 @@ class SMI2SRT(smiItem):
     Convert smi file to srt format with the provided encoding format.
    
     public attribute: 
-    smi: smi file to be converted to srt format 
+    smi: smi file including .smi extension to be converted to srt format 
     encoding: encoding for srt file to be saved
     titles: srt file contents in UTF-8 even though srt file to be written
               might have the different encoding
@@ -258,11 +258,9 @@ class SMI2SRT(smiItem):
         #lines = self.contents.split('\n')
         for line in self.titles:
             line = line.strip()
-            line += '\n'            # strip and replace \r\n to \n
-            #line = line.decode(self.encode)  # writing file is utf-8
+            line += '\n'           
             if len(line) <= 1:      # consider '\n'
                 continue
-            
             isnumber = True
             try:
                 int(line)
@@ -291,9 +289,10 @@ class SMI2SRT(smiItem):
 
 #------------------------------------------------------------------------------
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
 
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 3:
+        print ("Usage:")
         print ("$python smi2srt.py smifile encoding")
         sys.exit(1) 
     obj = SMI2SRT(smi=sys.argv[1], encoding=sys.argv[2])

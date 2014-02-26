@@ -5,7 +5,7 @@ from setuptools import setup
 #from setuptools import setup
 
 setup(name='smi2txt',
-      version='1.3.0',
+      version='1.3.1_test',
       author='Steven',
       author_email='ramsessk@gmail.com',
       url='https://github.com/ramsessk/smi2txt.git',

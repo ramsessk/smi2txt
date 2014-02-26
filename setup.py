@@ -4,11 +4,11 @@ from setuptools import setup
 
 #from setuptools import setup
 
-setup(name='mp4encode',
-      version='1.1.3',
+setup(name='smi2txt',
+      version='1.3.0',
       author='Steven',
       author_email='ramsessk@gmail.com',
-      url='https://ramsessk@bitbucket.org/ramsessk/mp4encode.git',
+      url='https://github.com/ramsessk/smi2txt.git',
       description='smi to srt, smi to txt converter',
       long_description=open('readme.md').read(),
       packages = ['smi2txt'],
